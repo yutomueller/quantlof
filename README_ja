@@ -1,0 +1,43 @@
+# QuantumLOFClassifier（量子局所外れ値因子分類器）
+
+このパッケージは、Qiskit や D-Wave の量子ツールを活用した、量子拡張版 Local Outlier Factor（LOF）異常検知モデルを提供します。
+
+## 📘 概要
+
+`QuantumLOFClassifier` は、局所外れ値因子（LOF）ベースの異常検知を行う推定器で、k-距離推定に量子バックエンド（シミュレータや実機）を用いることが可能です。
+実機は未テストです。
+
+- **Qiskit AerSimulator** または **IBM Quantum Runtime** による量子回路実行
+- 古典的な LOF 手法：k-距離、局所到達可能密度（LRD）、LOFスコア
+- deltaしきい値による異常検知
+- 正常・異常データ用の2種の分類器を搭載
+
+---
+
+## 🔍 参考文献
+
+この実装は以下の論文に着想を得ています：
+
+- Ming-Chao Guo ほか, 「Quantum Algorithm for Unsupervised Anomaly Detection」  
+  - Section II.A: LOF定義としきい値（LOF(x) ≥ δ → 異常）
+  - Section III.A–C: 量子距離推定・k距離・LRD・LOF計算方法
+
+---
+
+## 🚀 使用例
+
+```python
+from quantum_lof import QuantumLOFClassifier
+
+clf = QuantumLOFClassifier(
+    n_neighbors=20,
+    delta=1.5,
+    quantum_backend='qiskit_simulator',  # または 'ibm_cairo' など
+    shots=512,
+    random_state=42
+)
+
+clf.fit(X_train, y_train)
+anomalies = clf.get_anomaly_indices()
+y_pred = clf.predict(X_test)
+acc_clean, f1_clean, n_clean = clf.score_clean_only(X_test, y_test)
