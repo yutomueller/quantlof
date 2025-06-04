@@ -25,6 +25,9 @@ This implementation is inspired by the following paper:
 ---
 
 ## 🚀 Example Usage
+```Install
+pip install quantlof
+```
 
 ```python
 from quantum_lof import QuantumLOFClassifier
