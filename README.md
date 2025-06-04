@@ -42,6 +42,7 @@ anomalies = clf.get_anomaly_indices()
 y_pred = clf.predict(X_test)
 acc_clean, f1_clean, n_clean = clf.score_clean_only(X_test, y_test)
 
+```
 
 # QuantumLOFClassifier – Compliance & Gap Report (vs. Guo 2023)
 
