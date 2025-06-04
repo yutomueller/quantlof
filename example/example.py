@@ -11,7 +11,7 @@ from quantlof import QuantumLOFClassifier
 # ────────────────────────────────────────────────────
 # （A）ベースとなる特徴量データ 490 サンプルを生成
 X_base, y_base = make_classification(
-    n_samples=490,
+    n_samples=90,
     n_features=20,
     n_informative=10,
     n_redundant=5,
@@ -39,18 +39,19 @@ X_train, X_test, y_train, y_test = train_test_split(
 # ────────────────────────────────────────────────────
 clf = QuantumLOFClassifier(
     n_neighbors=20,
-    delta=1.3,
+    delta=2.0,
     quantum_backend='qiskit_simulator',  # AerSimulator を使用
     # quantum_backend='ibm_cairo',       # 実機 ibm_cairo を使用する場合
     shots=512,
-    random_state=42
+    random_state=42,
+    maxsample_for_quantum=100
 )
 
 # ────────────────────────────────────────────────────
 # 3) モデル学習 (LOF による異常/クリーン判定 + 下流モデル学習)
 # ────────────────────────────────────────────────────
 clf.fit(X_train, y_train)
-
+print(clf.lof_scores_)
 # ────────────────────────────────────────────────────
 # 4) 訓練データで異常と判定されたインデックスを取得
 # ────────────────────────────────────────────────────

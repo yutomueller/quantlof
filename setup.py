@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='quantlof',
-    version='0.1.0',
+    version='0.1.1',
     description='Quantum-enhanced Local Outlier Factor algorithm',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -20,9 +20,6 @@ setup(
         'scikit-learn==1.6.1',
         'scipy==1.15.3',
         'numpy==2.2.6',
-        'dimod==0.12.20',
-        'dwave-neal==0.6.0',
-        'dwave-samplers==1.5.0',
     ],
     python_requires='>=3.8',
 )
