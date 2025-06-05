@@ -48,24 +48,30 @@ clf = QuantumLOFClassifier(
 )
 
 # ────────────────────────────────────────────────────
-# 3) モデル学習 (LOF による異常/クリーン判定 + 下流モデル学習)
+# 3) LOF による異常/クリーン判定 
 # ────────────────────────────────────────────────────
-clf.fit(X_train, y_train)
+clf.detect_anomalies(X_train, y_train)
 print(clf.lof_scores_)
 # ────────────────────────────────────────────────────
 # 4) 訓練データで異常と判定されたインデックスを取得
 # ────────────────────────────────────────────────────
 anom_idx = clf.get_anomaly_indices()
+clean_idx = clf.get_clean_indices()
 print("Training anomalies indices:", anom_idx)
 
 # ────────────────────────────────────────────────────
-# 5) テストセット全体でラベル予測
+# 5) モデルを作成
+# ────────────────────────────────────────────────────
+clf.fit_models(y_train)
+
+# ────────────────────────────────────────────────────
+# 6) テストセット全体でラベル予測
 # ────────────────────────────────────────────────────
 y_pred = clf.predict(X_test)
 print(classification_report(y_test, y_pred))
 
 # ────────────────────────────────────────────────────
-# 6) テストセット中、LOF < delta (クリーン判定) のみで評価
+# 7) テストセット中、LOF < delta (クリーン判定) のみで評価
 # ────────────────────────────────────────────────────
 acc_clean, f1_clean, n_clean = clf.score_clean_only(X_test, y_test)
 print(f"Clean-only accuracy: {acc_clean:.4f}, F1: {f1_clean:.4f}, n_clean: {n_clean}")

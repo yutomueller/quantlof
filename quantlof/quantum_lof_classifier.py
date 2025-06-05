@@ -1,29 +1,32 @@
 # quantum_lof_classifier.py — *fully* Guo 2023‑compliant (Qiskit 2.0.2)
-"""Quantum‑enhanced Local Outlier Factor
+"""Quantum-enhanced Local Outlier Factor
 =========================================
-**Purpose**  Implement, line‑by‑line, the algorithm in
+**Purpose**  Implement, line-by-line, the algorithm in
 
-> Ming‑Chao Guo *et al.* “Quantum Algorithm for Unsupervised Anomaly
-> Detection”, *arXiv*:2304.08710 (2023).
+> Ming-Chao Guo *et al.* “Quantum Algorithm for Unsupervised Anomaly
+> Detection”, *arXiv*:2304.08710 (2023).
 
 This version fixes two issues raised during integration:
-1. **SyntaxWarning** caused by back‑slash escapes in docstrings.
+1. **SyntaxWarning** caused by back-slash escapes in docstrings.
 2. **CircuitError** due to inverting an ``initialize`` gate.  We now use
-   ``StatePreparation`` → ``.inverse()`` which is fully unitary and
-   invertible in Qiskit 2.0.2, then control(1) to build the Hadamard‑test
+   ``StatePreparation`` → ``.inverse()`` which is fully unitary and
+   invertible in Qiskit 2.0.2, then control(1) to build the Hadamard-test
    circuit.
 
-Paper ⇔ Code map
+Paper ⇔ Code map
 ----------------
-| Section | Element | Symbol / Function |
-|---------|---------|-------------------|
-| III‑A Eq.(13–14) | amplitude embedding | ``_amp_embed_state`` |
-| III‑A Fig. 3 | **Hadamard test** (⟨x|y⟩ real) | ``_make_hadamard_test`` / ``_estimate_inner_product`` |
-| III‑A Eq.(15–17) | distance ``√(2‑2⟨x|y⟩)`` | ``_distance_from_inner`` |
-| III‑B | reachability / LRD | ``fit`` |
-| III‑C Eq.(18) | LOF | ``fit`` & ``decision_function`` |
-| Eq.(2) | LOF ≥ δ anomaly | ``fit`` |
+| Section      | Element                            | Symbol / Function                            |
+|--------------|-------------------------------------|-----------------------------------------------|
+| III-A Eq.(13–14) | amplitude embedding               | ``_amp_embed_state``                          |
+| III-A Fig. 3     | **Hadamard test** (⟨x|y⟩ real)      | ``_make_hadamard_test`` / ``_estimate_inner_product`` |
+| III-A Eq.(15–17) | distance ``√(2-2⟨x|y⟩)``             | ``_distance_from_inner``                      |
+| III-A (end)      | **k-distance** (quantum or classic) | ``_quantum_k_distance`` / classic fallback    |
+| III-B            | reachability / LRD                 | ``detect_anomalies`` (quantum/classic)        |
+| III-C Eq.(18)    | LOF calculation                    | ``detect_anomalies`` & ``decision_function``  |
+| Eq.(2)           | LOF ≥ δ → anomaly                  | ``detect_anomalies``                          |
+| downstream       | clean vs. noise classifier fitting | ``fit_models``                                |
 """
+
 from __future__ import annotations
 
 import math
@@ -180,42 +183,117 @@ class QuantumLOFClassifier(BaseEstimator, OutlierMixin, ClassifierMixin):
         return kdist
 
     # ------------------------ public API ------------------------
-    def fit(self, X: np.ndarray, y: np.ndarray):
+
+    def detect_anomalies(self, X: np.ndarray, y: np.ndarray):
+        """
+        Compute LOF scores and identify anomaly indices (LOF ≥ δ).
+
+        This method only performs:
+          1. Feature scaling.
+          2. Quantum or classical k-distance computation.
+          3. Neighbor index retrieval.
+          4. LRD (local reachability density) calculation.
+          5. LOF score computation.
+          6. Anomaly (noise) index extraction.
+
+        Args:
+            X: Feature matrix of shape (n_samples, n_features).
+            y: Label array of length n_samples (passed through for downstream use).
+
+        Returns:
+            self
+        """
         X, y = np.asarray(X, float), np.asarray(y)
+
+        # Fit a StandardScaler on X and transform to obtain scaled features Xs
         self.scaler_ = StandardScaler().fit(X)
         Xs = self.scaler_.transform(X)
         self.X_train_ = Xs
 
+        # Build the chosen quantum backend (or fallback to classical)
         self._build_backend()
+
+        # If sample count is within quantum limit, use quantum k-distance; otherwise classical
         if len(X) <= self.maxsample_for_quantum:
-            print("Use quantum k‑distance (Hadamard test)")
+            print("Use quantum k-distance (Hadamard test)")
             self.k_distances_ = self._quantum_k_distance(Xs)
         else:
-            print("Use classic k‑distance")
+            print("Use classic k-distance")
             nbr_tmp = NearestNeighbors(n_neighbors=self.n_neighbors).fit(Xs)
             self.k_distances_ = nbr_tmp.kneighbors(Xs)[0][:, -1]
 
+        # Retrieve neighbor indices using classical k-NN (k_neighbors + 1, then drop self)
         nbrs = NearestNeighbors(n_neighbors=self.n_neighbors + 1).fit(Xs)
         _, idx = nbrs.kneighbors(Xs)
         self.neighbor_indices_ = [row[1:].tolist() for row in idx]
 
+        # Compute Local Reachability Density (LRD) for each sample
         n = len(Xs)
         self.lrd_scores_ = np.zeros(n)
         for i, neigh in enumerate(self.neighbor_indices_):
-            reach = [max(self.k_distances_[j], np.linalg.norm(Xs[i] - Xs[j])) for j in neigh]
-            self.lrd_scores_[i] = 1 / (np.mean(reach) + EPS)
+            reach_distances = [
+                max(self.k_distances_[j], np.linalg.norm(Xs[i] - Xs[j]))
+                for j in neigh
+            ]
+            self.lrd_scores_[i] = 1.0 / (np.mean(reach_distances) + EPS)
 
+        # Compute LOF scores for each sample
         self.lof_scores_ = np.zeros(n)
         for i, neigh in enumerate(self.neighbor_indices_):
-            self.lof_scores_[i] = np.mean([self.lrd_scores_[j] / (self.lrd_scores_[i] + EPS) for j in neigh])
+            self.lof_scores_[i] = np.mean([
+                self.lrd_scores_[j] / (self.lrd_scores_[i] + EPS)
+                for j in neigh
+            ])
 
+        # Determine which samples are anomalies (LOF ≥ delta)
         is_noise = self.lof_scores_ >= self.delta
-        self.anomaly_indices_, self.clean_indices_ = np.where(is_noise)[0], np.where(~is_noise)[0]
+        self.anomaly_indices_, self.clean_indices_ = (
+            np.where(is_noise)[0],
+            np.where(~is_noise)[0]
+        )
 
-        if len(self.clean_indices_):
+        return self
+
+    def fit_models(self, y: np.ndarray):
+        """
+        Fit the downstream classifiers based on detected anomalies.
+
+        This method assumes detect_anomalies() has been called, so that:
+          - self.X_train_ contains scaled features.
+          - self.anomaly_indices_ and self.clean_indices_ are populated.
+
+        Args:
+            y: Label array of length n_samples.
+        """
+        if self.X_train_ is None or self.anomaly_indices_ is None:
+            raise RuntimeError("Call detect_anomalies() before fit_models().")
+
+        Xs = self.X_train_
+
+        # Build a boolean mask for noise samples
+        is_noise = np.zeros(len(Xs), dtype=bool)
+        is_noise[self.anomaly_indices_] = True
+
+        # Fit clean_model on samples classified as clean by LOF (LOF < delta)
+        if len(self.clean_indices_) > 0:
             self.clean_model.fit(Xs[~is_noise], y[~is_noise])
+
+        # Fit noise_model on all samples (including anomalies)
         self.noise_model.fit(Xs, y)
         return self
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        """
+        Convenience method: run detect_anomalies() then fit_models().
+
+        Args:
+            X: Feature matrix of shape (n_samples, n_features).
+            y: Label array of length n_samples.
+        """
+        self.detect_anomalies(X, y)
+        self.fit_models(y)
+        return self
+
 
     def decision_function(self, X: np.ndarray) -> np.ndarray:
         Xs = self.scaler_.transform(X)
@@ -254,7 +332,11 @@ class QuantumLOFClassifier(BaseEstimator, OutlierMixin, ClassifierMixin):
 
         # --------------------- anomaly accessor ---------------------
     def get_anomaly_indices(self) -> np.ndarray:
-        """Return indices flagged as anomalies after fit()."""
         if self.anomaly_indices_ is None:
-            raise RuntimeError("fit() must be called first.")
+            raise RuntimeError("detect_anomalies() must be called first.")
         return self.anomaly_indices_
+
+    def get_clean_indices(self) -> np.ndarray:
+        if self.clean_indices_ is None:
+            raise RuntimeError("detect_anomalies() must be called first.")
+        return self.clean_indices_

@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='quantlof',
-    version='0.1.1',
+    version='0.1.2',
     description='Quantum-enhanced Local Outlier Factor algorithm',
     long_description=long_description,
     long_description_content_type='text/markdown',

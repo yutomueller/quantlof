@@ -41,7 +41,7 @@ clf.fit(X_train, y_train)
 anomalies = clf.get_anomaly_indices()
 y_pred = clf.predict(X_test)
 acc_clean, f1_clean, n_clean = clf.score_clean_only(X_test, y_test)
-
+```
 
 # 量子LOF分類器 ― 準拠状況と課題レポート（日本語）
 
