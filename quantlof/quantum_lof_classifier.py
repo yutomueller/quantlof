@@ -328,7 +328,7 @@ class QuantumLOFClassifier(BaseEstimator, OutlierMixin, ClassifierMixin):
             return 0.0, 0.0, 0
         Xc, yc = self.scaler_.transform(X[mask]), y[mask]
         yp = self.clean_model.predict(Xc)
-        return accuracy_score(yc, yp), f1_score(yc, yp), int(mask.sum())
+        return accuracy_score(yc, yp), f1_score(yc, yp, average='weighted'), int(mask.sum())
 
         # --------------------- anomaly accessor ---------------------
     def get_anomaly_indices(self) -> np.ndarray:
