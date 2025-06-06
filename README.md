@@ -52,10 +52,13 @@ clf = QuantumLOFClassifier(
     random_state=42
 )
 
-clf.fit(X_train, y_train)
-anomalies = clf.get_anomaly_indices()
-y_pred = clf.predict(X_test)
-acc, f1, n_clean = clf.score_clean_only(X_test, y_test)
+clf.detect_anomalies(X, y)
+print(clf.lof_scores_)
+
+anom_idx = clf.get_anomaly_indices()
+clean_idx = clf.get_clean_indices()
+print("Anomalies indices:", anom_idx)
+print("Clean indices:", clean_idx)
 ```
 
 ---
@@ -84,26 +87,6 @@ acc, f1, n_clean = clf.score_clean_only(X_test, y_test)
 | Eq.(2)             | Thresholding with δ                    | ✅ LOF ≥ δ → anomaly      |                     |
 | Grover, QRAM, etc. | Quantum minimum/QRAM/Grover extraction | ❌ Not implemented        |                     |
 
----
-
-## 📈 Visualization (optional)
-
-You can project LOF scores using PCA or t-SNE and visualize detected anomalies:
-
-```python
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-
-X_proj = PCA(n_components=2).fit_transform(X)
-anoms = clf.get_anomaly_indices()
-
-plt.scatter(*X_proj.T, c='gray')
-plt.scatter(*X_proj[anoms].T, c='red', label='Quantum LOF anomalies')
-plt.legend()
-plt.show()
-```
-
----
 
 ## 🛠️ API
 
