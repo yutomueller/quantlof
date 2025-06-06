@@ -79,7 +79,7 @@ print("Clean indices:", clean_idx)
 | Paper Section      | Description                            | Status                   |                     
 | ------------------ | -------------------------------------- | ------------------------ | 
 | III-A Eq.(13–14)   | Amplitude embedding                    | ✅ via `StatePreparation` |                     
-| III-A Fig. 3       | Hadamard test (⟨x｜y⟩ real)             | ✅ Fully implemented |
+| III-A Fig. 3       | Hadamard test (⟨x｜y⟩)             | ✅ Fully implemented |
 | III-A Eq.(15–17)   | d(x,y) = √(2 − 2⟨x｜y⟩)                 | ✅ Used              |
 | III-B              | Local Reachability Density (LRD)       | ✅ Classical              |                     
 | III-C Eq.(18)      | LOF score = average of LRD ratios      | ✅ Classical           |                                      
