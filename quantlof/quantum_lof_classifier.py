@@ -5,26 +5,7 @@
 
 > Ming-Chao Guo *et al.* “Quantum Algorithm for Unsupervised Anomaly
 > Detection”, *arXiv*:2304.08710 (2023).
-
-This version fixes two issues raised during integration:
-1. **SyntaxWarning** caused by back-slash escapes in docstrings.
-2. **CircuitError** due to inverting an ``initialize`` gate.  We now use
-   ``StatePreparation`` → ``.inverse()`` which is fully unitary and
-   invertible in Qiskit 2.0.2, then control(1) to build the Hadamard-test
-   circuit.
-
-Paper ⇔ Code map
-----------------
-| Section      | Element                            | Symbol / Function                            |
-|--------------|-------------------------------------|-----------------------------------------------|
-| III-A Eq.(13–14) | amplitude embedding               | ``_amp_embed_state``                          |
-| III-A Fig. 3     | **Hadamard test** (⟨x|y⟩ real)      | ``_make_hadamard_test`` / ``_estimate_inner_product`` |
-| III-A Eq.(15–17) | distance ``√(2-2⟨x|y⟩)``             | ``_distance_from_inner``                      |
-| III-A (end)      | **k-distance** (quantum or classic) | ``_quantum_k_distance`` / classic fallback    |
-| III-B            | reachability / LRD                 | ``detect_anomalies`` (quantum/classic)        |
-| III-C Eq.(18)    | LOF calculation                    | ``detect_anomalies`` & ``decision_function``  |
-| Eq.(2)           | LOF ≥ δ → anomaly                  | ``detect_anomalies``                          |
-| downstream       | clean vs. noise classifier fitting | ``fit_models``                                |
+                            |
 """
 
 from __future__ import annotations
