@@ -22,11 +22,10 @@ This repository provides a **faithful implementation(as far as I can)** of the a
 | Paper Section      | Functionality                 | Implemented? | Notes                                    |                                  |
 | ------------------ | ----------------------------- | ------------ | ---------------------------------------- | -------------------------------- |
 | III-A Eq.(13–14)   | Amplitude embedding           | ✅ Partial    | Uses `StatePreparation`, not QRAM oracle |                                  |
-| III-A Fig. 3       | Hadamard test ⟨x              | y⟩           | ✅ Yes                                    | Exact ancilla-based test circuit |
-| III-A Eq.(15–17)   | Distance from inner product   | ✅ Yes        | \`sqrt(2 − 2⟨x                           | y⟩)\` formula                    |
+| III-A Fig. 3       | Hadamard test ⟨x｜y⟩           | ✅ Yes                                    | Exact ancilla-based test circuit |
+| III-A Eq.(15–17)   | Distance from inner product   | ✅ Yes        | \`sqrt(2 − 2⟨x｜y⟩)\` formula                    |
 | III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌ No         | Replaced with classical sort             |                                  |
 | III-B              | Quantum LRD (inverse average) | ❌ No         | Classical mean-based implementation      |                                  |
-| III-C Eq.(18)      | LOF ≥ δ thresholding          | ✅ Yes        | Fully reproduced                         |                                  |
 | Eq.(2), Eq.(28)    | Grover anomaly extraction     | ❌ No         | Classical threshold test                 |                                  |
 
 ---
@@ -77,15 +76,14 @@ print("Clean indices:", clean_idx)
 
 ## 📊 Compliance with Guo et al. (2023)
 
-| Paper Section      | Description                            | Status                   |                     |
-| ------------------ | -------------------------------------- | ------------------------ | ------------------- |
-| III-A Eq.(13–14)   | Amplitude embedding                    | ✅ via `StatePreparation` |                     |
-| III-A Fig. 3       | Hadamard test (⟨x                      | y⟩ real)                 | ✅ Fully implemented |
-| III-A Eq.(15–17)   | d(x,y) = √(2 − 2⟨x                     | y⟩)                      | ✅ Used              |
-| III-B              | Local Reachability Density (LRD)       | ✅ Classical              |                     |
-| III-C Eq.(18)      | LOF score = average of LRD ratios      | ✅ Classical              |                     |
-| Eq.(2)             | Thresholding with δ                    | ✅ LOF ≥ δ → anomaly      |                     |
-| Grover, QRAM, etc. | Quantum minimum/QRAM/Grover extraction | ❌ Not implemented        |                     |
+| Paper Section      | Description                            | Status                   |                     
+| ------------------ | -------------------------------------- | ------------------------ | 
+| III-A Eq.(13–14)   | Amplitude embedding                    | ✅ via `StatePreparation` |                     
+| III-A Fig. 3       | Hadamard test (⟨x｜y⟩ real)             | ✅ Fully implemented |
+| III-A Eq.(15–17)   | d(x,y) = √(2 − 2⟨x｜y⟩)                 | ✅ Used              |
+| III-B              | Local Reachability Density (LRD)       | ✅ Classical              |                     
+| III-C Eq.(18)      | LOF score = average of LRD ratios      | ✅ Classical           |                                      
+| Grover, QRAM, etc. | Quantum minimum/QRAM/Grover extraction | ❌ Not implemented        |                     
 
 
 ## 🛠️ API
