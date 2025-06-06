@@ -21,7 +21,7 @@ This repository provides a **faithful implementation(as far as I can)** of the a
 
 | Paper Section      | Functionality                 | Implemented? | Notes                                    |                                  |
 | ------------------ | ----------------------------- | ------------ | ---------------------------------------- | -------------------------------- |
-| III-A Eq.(13–14)   | Amplitude embedding           | ✅ Partial    | Uses `StatePreparation`, not QRAM oracle |                                  |
+| III-A Eq.(7)   | Amplitude embedding           | ✅ Partial    | Uses `StatePreparation`, not QRAM oracle |                                  |
 | III-A Fig. 3       | Hadamard test ⟨x｜y⟩           | ✅ Yes                                    | Exact ancilla-based test circuit |
 | III-A Eq.(15–17)   | Distance from inner product   | ⚠️Partial       |    My implementation estimates the real part of ⟨x｜y⟩ via the Hadamard test, and uses it to compute the Euclidean distance as d(x, y) = √(2 − 2⟨x｜y⟩), assuming normalized inputs.                  |
 | III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌ No         | Replaced with classical sort             |                                  |
