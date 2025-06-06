@@ -23,7 +23,7 @@ This repository provides a **faithful implementation(as far as I can)** of the a
 | ------------------ | ----------------------------- | ------------ | ---------------------------------------- | -------------------------------- |
 | III-A Eq.(13–14)   | Amplitude embedding           | ✅ Partial    | Uses `StatePreparation`, not QRAM oracle |                                  |
 | III-A Fig. 3       | Hadamard test ⟨x｜y⟩           | ✅ Yes                                    | Exact ancilla-based test circuit |
-| III-A Eq.(15–17)   | Distance from inner product   | ✅ Yes        | ⚠️ The formula d(x, y) = √(2 − 2⟨x｜y⟩) is not explicitly written, but the algorithm implicitly relies on this identity for normalized vectors. The squared Euclidean distance is encoded through amplitude estimation (e.g., sin²θ), which reflects the distance structure that underlies the use of quantum inner products.                    |
+| III-A Eq.(15–17)   | Distance from inner product   | ⚠️Partial       |    My implementation estimates the real part of ⟨x｜y⟩ via the Hadamard test, and uses it to compute the Euclidean distance as d(x, y) = √(2 − 2⟨x｜y⟩), assuming normalized inputs.                  |
 | III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌ No         | Replaced with classical sort             |                                  |
 | III-B              | Quantum LRD (inverse average) | ❌ No         | Classical mean-based implementation      |                                  |
 | Eq.(2), Eq.(28)    | Grover anomaly extraction     | ❌ No         | Classical threshold test                 |                                  |
