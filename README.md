@@ -1,4 +1,4 @@
-# QuantumLOFClassifier – Fully Guo 2023-Compliant
+# QuantumLOFClassifier – Inspired by Guo et al. (2023)
 
 This repository provides an implementation partially inspired by the algorithm proposed in:
 
