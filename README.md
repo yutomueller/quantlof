@@ -1,6 +1,6 @@
 # QuantumLOFClassifier – Fully Guo 2023-Compliant
 
-This repository provides a **faithful implementation(as far as I can)** of the algorithm proposed in:
+This repository provides an implementation partially inspired by the algorithm proposed in:
 
 > Ming-Chao Guo et al., “Quantum Algorithm for Unsupervised Anomaly Detection”
 > [arXiv:2304.08710 (2023)](https://arxiv.org/abs/2304.08710)
@@ -21,12 +21,12 @@ This repository provides a **faithful implementation(as far as I can)** of the a
 
 | Paper Section      | Functionality                 | Implemented? | Notes                                    |                                  |
 | ------------------ | ----------------------------- | ------------ | ---------------------------------------- | -------------------------------- |
-| III-A Eq.(7)   | Amplitude embedding           | ✅ Partial    | Uses `StatePreparation`, not QRAM oracle |                                  |
-| III-A Fig. 3       | Hadamard test ⟨x｜y⟩           | ✅ Yes                                    | Exact ancilla-based test circuit |
-| III-A Eq.(15–17)   | Distance from inner product   | ⚠️Partial       |    My implementation estimates the real part of ⟨x｜y⟩ via the Hadamard test, and uses it to compute the Euclidean distance as d(x, y) = √(2 − 2⟨x｜y⟩), assuming normalized inputs.                  |
-| III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌ No         | Replaced with classical sort             |                                  |
-| III-B              | Quantum LRD (inverse average) | ❌ No         | Classical mean-based implementation      |                                  |
-| Eq.(2), Eq.(28)    | Grover anomaly extraction     | ❌ No         | Classical threshold test                 |                                  |
+| III-A Eq.(7)   | Amplitude embedding           | ✅    | Uses `StatePreparation`, not QRAM oracle |                                  |
+| III-A Eq.(11)      | Hadamard test ⟨x｜y⟩           | ✅ |                                   Our implementation achieves pairwise distance estimation via Hadamard test and inner product reconstruction (assuming normalized inputs), which differs from the amplitude-encoded quantum distance estimation approach proposed in arXiv:2304.08710. Therefore, while the objective aligns with the original paper, the method is independently designed.
+| III-A Eq.(15–17)   | Distance from inner product   | ⚠️  |    My implementation estimates the real part of ⟨x｜y⟩ via the Hadamard test, and uses it to compute the Euclidean distance as d(x, y) = √(2 − 2⟨x｜y⟩), assuming normalized inputs.                  |
+| III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌          | Replaced with classical sort             |                                  |
+| III-B              | Quantum LRD (inverse average) | ❌          | Classical mean-based implementation      |                                  |
+| Eq.(2), Eq.(28)    | Grover anomaly extraction     | ❌         | Classical threshold test                 |                                  |
 
 ---
 
