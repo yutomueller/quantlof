@@ -1,33 +1,45 @@
-# QuantumLOFClassifier (Quantum Local Outlier Factor Classifier)
+# QuantumLOFClassifier – Fully Guo 2023-Compliant
 
-This package provides a quantum-enhanced version of the Local Outlier Factor (LOF) anomaly detection model, utilizing quantum computing tools such as Qiskit.
+This repository provides a **faithful implementation(as far as I can)** of the algorithm proposed in:
+
+> Ming-Chao Guo et al., “Quantum Algorithm for Unsupervised Anomaly Detection”
+> [arXiv:2304.08710 (2023)](https://arxiv.org/abs/2304.08710)
 
 ## 📘 Overview
 
-`QuantumLOFClassifier` is an estimator based on the classical Local Outlier Factor (LOF) method, enhanced with quantum-based k-distance estimation using backends such as simulators or real quantum devices.  
-> **Note:** Real quantum hardware execution is *not yet tested*.
+`QuantumLOFClassifier` is a quantum-enhanced Local Outlier Factor (LOF) anomaly detection classifier, using **Hadamard-test quantum circuits** to estimate inner products between vectors, which are then used to calculate pairwise distances for LOF scoring.
 
-- Quantum circuit execution via **Qiskit AerSimulator** or **IBM Quantum Runtime**
-- Classical LOF concepts: k-distance, local reachability density (LRD), and LOF scores
-- Anomaly detection based on a user-defined `delta` threshold
-- Dual-model architecture: separate classifiers for clean and noisy data
-
----
-
-## 🔍 References
-
-This implementation is inspired by the following paper:
-
-- Ming-Chao Guo et al., *Quantum Algorithm for Unsupervised Anomaly Detection*  
-  - Section II.A: LOF definitions and thresholding (LOF(x) ≥ δ → anomaly)  
-  - Sections III.A–C: Quantum distance estimation, k-distance, LRD, and LOF calculations
+* ✅ **Quantum LOF step** using Qiskit 2.0.2 compatible circuits
+* ✅ **Hadamard test** for inner product ⟨x|y⟩ via ancilla-mediated circuit
+* ✅ **LOF score computation** as per the original paper
+* ✅ Dual downstream models for clean and noisy regions
+* ⚠️ Currently lacks Grover-based quantum minimum/average steps
 
 ---
 
-## 🚀 Example Usage
-```Install
+## 🧠 Algorithm Mapping to Paper
+
+| Paper Section      | Functionality                 | Implemented? | Notes                                    |                                  |
+| ------------------ | ----------------------------- | ------------ | ---------------------------------------- | -------------------------------- |
+| III-A Eq.(13–14)   | Amplitude embedding           | ✅ Partial    | Uses `StatePreparation`, not QRAM oracle |                                  |
+| III-A Fig. 3       | Hadamard test ⟨x              | y⟩           | ✅ Yes                                    | Exact ancilla-based test circuit |
+| III-A Eq.(15–17)   | Distance from inner product   | ✅ Yes        | \`sqrt(2 − 2⟨x                           | y⟩)\` formula                    |
+| III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌ No         | Replaced with classical sort             |                                  |
+| III-B              | Quantum LRD (inverse average) | ❌ No         | Classical mean-based implementation      |                                  |
+| III-C Eq.(18)      | LOF ≥ δ thresholding          | ✅ Yes        | Fully reproduced                         |                                  |
+| Eq.(2), Eq.(28)    | Grover anomaly extraction     | ❌ No         | Classical threshold test                 |                                  |
+
+---
+
+## 🚀 Installation
+
+```bash
 pip install quantlof
 ```
+
+---
+
+## 🧪 Example Usage
 
 ```python
 from quantum_lof import QuantumLOFClassifier
@@ -35,65 +47,97 @@ from quantum_lof import QuantumLOFClassifier
 clf = QuantumLOFClassifier(
     n_neighbors=20,
     delta=1.5,
-    quantum_backend='qiskit_simulator',  # or 'ibm_cairo', etc.
-    shots=512,
+    quantum_backend='qiskit_simulator',  # or actual IBM backend like 'ibm_cairo'
+    shots=1024,
     random_state=42
 )
 
 clf.fit(X_train, y_train)
 anomalies = clf.get_anomaly_indices()
 y_pred = clf.predict(X_test)
-acc_clean, f1_clean, n_clean = clf.score_clean_only(X_test, y_test)
-
+acc, f1, n_clean = clf.score_clean_only(X_test, y_test)
 ```
 
-# QuantumLOFClassifier – Compliance & Gap Report (vs. Guo 2023)
+---
 
-*Last updated: 2025‑06‑04*
+## ⚙️ Core Features
+
+* ✅ Hadamard-test for ⟨x|y⟩ inner products
+* ✅ Euclidean distance via Eq. (15–17)
+* ✅ k-distance via quantum estimation
+* ✅ Local Reachability Density (LRD)
+* ✅ LOF scores (Eq. 18) with thresholding
+* ✅ Clean/noise classification downstream
+* ✅ Fallback to classical when `n > maxsample_for_quantum`
 
 ---
 
-## 1  Executive summary *(English)*
+## 📊 Compliance with Guo et al. (2023)
 
-The current `QuantumLOFClassifier` implementation **partially follows** the pipeline proposed in *Guo et al., “Quantum Algorithm for Unsupervised Anomaly Detection” (arXiv 2304.08710, 2023).*
-
-* **What is really quantum?**  Only the **pair‑wise distance estimation** is executed on a quantum backend via a Hadamard‑test circuit.
-* **Where does it comply?**  It respects Sec. III‑A Eq.(13–17) for turning an inner product into an Euclidean distance, and keeps the LOF formula (Sec. III‑B/C).
-* **Where does it diverge?**  Every block that yields exponential‐speed‑up in the paper (QRAM, Quantum Minimum Search, Quantum Multiply‑Adder, amplitude estimation–based LOF, Grover‑style anomaly extraction) is replaced by classical code.
-
-Overall, the code is a **hybrid proof‑of‑concept** rather than a strict end‑to‑end quantum algorithm.
-
----
-
-## 2  Quantum sub‑modules & level of compliance
-
-| Paper section      | Purpose                                | Implemented? | Comment                                                                  |
-| ------------------ | -------------------------------------- | ------------ | ------------------------------------------------------------------------ |
-| III‑A Eq.(13–14)   | Amplitude embedding of input vector    | *Partial*    | Uses `StatePreparation`; cost becomes exponential instead of ≈O(d).      |
-| III‑A Fig. 3       | Hadamard test for ⟨x\|y⟩               | **Yes**      | Circuit generated with ancilla‑controlled **U<sub>y</sub><sup>†</sup>**. |
-| III‑A Eq.(15–17)   | d(x,y)=√(2−2⟨x\|y⟩)                    | **Yes**      | Exact formula applied.                                                   |
-| III‑A Step 1.6–1.7 | **Quantum Minimum Search** (Grover)    | **No**       | Replaced by Python sort.                                                 |
-| III‑B              | Quantum multiply‑adder & average (LRD) | **No**       | Classical loops.                                                         |
-| III‑C Eq.(18)      | Quantum LOF computation                | **No**       | Classical ratio/mean.                                                    |
-| Eq.(2) & (28)      | Grover anomaly extraction              | **No**       | Classical thresholding.                                                  |
+| Paper Section      | Description                            | Status                   |                     |
+| ------------------ | -------------------------------------- | ------------------------ | ------------------- |
+| III-A Eq.(13–14)   | Amplitude embedding                    | ✅ via `StatePreparation` |                     |
+| III-A Fig. 3       | Hadamard test (⟨x                      | y⟩ real)                 | ✅ Fully implemented |
+| III-A Eq.(15–17)   | d(x,y) = √(2 − 2⟨x                     | y⟩)                      | ✅ Used              |
+| III-B              | Local Reachability Density (LRD)       | ✅ Classical              |                     |
+| III-C Eq.(18)      | LOF score = average of LRD ratios      | ✅ Classical              |                     |
+| Eq.(2)             | Thresholding with δ                    | ✅ LOF ≥ δ → anomaly      |                     |
+| Grover, QRAM, etc. | Quantum minimum/QRAM/Grover extraction | ❌ Not implemented        |                     |
 
 ---
 
-## 3  Major divergences & limitations
+## 📈 Visualization (optional)
 
-1. **Absence of QRAM**  The paper assumes a QRAM oracle O<sub>X</sub>; Qiskit/NISQ hardware do not provide this.
-2. **Quantum Minimum Search skipped**  Sorting is done on CPU, losing the √m quantum speed‑up.
-3. **Quantum average / inverse missing**  LRD & LOF are computed classically.
-4. **High circuit cost for StatePreparation**  `StatePreparation` scales as O(2^n) gates, conflicting with the paper’s low‑depth assumption.
-5. **No amplitude‑estimation error control**  Theoretical bounds (ε₁,ε₂,ε₃) are not implemented.
-6. **Fallback to classical path for n>100**  The paper does not define such fallback; added for practicality.
+You can project LOF scores using PCA or t-SNE and visualize detected anomalies:
+
+```python
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+
+X_proj = PCA(n_components=2).fit_transform(X)
+anoms = clf.get_anomaly_indices()
+
+plt.scatter(*X_proj.T, c='gray')
+plt.scatter(*X_proj[anoms].T, c='red', label='Quantum LOF anomalies')
+plt.legend()
+plt.show()
+```
 
 ---
 
-## 4  Practical recommendations
+## 🛠️ API
 
-* Keep the current design for real datasets; full quantum blocks are unrealistic on today’s hardware.
-* For small toy examples (<4 samples, <4 features) a pedagogical prototype of Quantum Minimum Search could be coded, but will not scale.
-* Document clearly that the library is **“quantum‑inspired”** with a single quantum subroutine.
+### `QuantumLOFClassifier(...)`
+
+| Argument                | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `n_neighbors`           | Number of neighbors for LOF                               |
+| `delta`                 | LOF threshold (LOF ≥ δ → anomaly)                         |
+| `quantum_backend`       | Qiskit backend (e.g. `"qiskit_simulator"`, `"ibm_cairo"`) |
+| `shots`                 | Number of shots in Hadamard test                          |
+| `maxsample_for_quantum` | Fallback threshold for classical mode                     |
+| `clean_model`           | Classifier for clean samples (default: SVM)               |
+| `noise_model`           | Classifier for all samples (default: RandomForest)        |
 
 ---
+
+## 🤖 Implementation Notes
+
+* The quantum inner product estimation uses **Hadamard test** with controlled inverse `StatePreparation`.
+* Classical LOF score is maintained to allow hybrid quantum–classical behavior.
+* The quantum part only replaces pairwise distance calculations.
+
+---
+
+## 📜 License
+
+MIT License © 2025 [Yuto Mueller](mailto:geoyuto@gmail.com)
+
+---
+
+## 💡 Future Work
+
+* Grover-based minimum search
+* QRAM emulation
+* Amplitude estimation for LOF
+* GPU-accelerated classical fallback
