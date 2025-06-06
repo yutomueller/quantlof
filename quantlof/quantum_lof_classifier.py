@@ -1,7 +1,7 @@
 # quantum_lof_classifier.py — *fully* Guo 2023‑compliant (Qiskit 2.0.2)
 """Quantum-enhanced Local Outlier Factor
 =========================================
-**Purpose**  Implement, line-by-line, the algorithm in
+Inspired by
 
 > Ming-Chao Guo *et al.* “Quantum Algorithm for Unsupervised Anomaly
 > Detection”, *arXiv*:2304.08710 (2023).
