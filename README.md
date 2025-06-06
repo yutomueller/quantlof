@@ -23,7 +23,7 @@ This repository provides a **faithful implementation(as far as I can)** of the a
 | ------------------ | ----------------------------- | ------------ | ---------------------------------------- | -------------------------------- |
 | III-A Eq.(13–14)   | Amplitude embedding           | ✅ Partial    | Uses `StatePreparation`, not QRAM oracle |                                  |
 | III-A Fig. 3       | Hadamard test ⟨x｜y⟩           | ✅ Yes                                    | Exact ancilla-based test circuit |
-| III-A Eq.(15–17)   | Distance from inner product   | ✅ Yes        | \`sqrt(2 − 2⟨x｜y⟩)\` formula                    |
+| III-A Eq.(15–17)   | Distance from inner product   | ✅ Yes        | ⚠️ The formula d(x, y) = √(2 − 2⟨x｜y⟩) is not explicitly written, but the algorithm implicitly relies on this identity for normalized vectors. The squared Euclidean distance is encoded through amplitude estimation (e.g., sin²θ), which reflects the distance structure that underlies the use of quantum inner products.                    |
 | III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌ No         | Replaced with classical sort             |                                  |
 | III-B              | Quantum LRD (inverse average) | ❌ No         | Classical mean-based implementation      |                                  |
 | Eq.(2), Eq.(28)    | Grover anomaly extraction     | ❌ No         | Classical threshold test                 |                                  |
@@ -73,18 +73,6 @@ print("Clean indices:", clean_idx)
 * ✅ Fallback to classical when `n > maxsample_for_quantum`
 
 ---
-
-## 📊 Compliance with Guo et al. (2023)
-
-| Paper Section      | Description                            | Status                   |                     
-| ------------------ | -------------------------------------- | ------------------------ | 
-| III-A Eq.(13–14)   | Amplitude embedding                    | ✅ via `StatePreparation` |                     
-| III-A Fig. 3       | Hadamard test (⟨x｜y⟩)             | ✅ Fully implemented |
-| III-A Eq.(15–17)   | d(x,y) = √(2 − 2⟨x｜y⟩)                 | ✅ Used              |
-| III-B              | Local Reachability Density (LRD)       | ✅ Classical              |                     
-| III-C Eq.(18)      | LOF score = average of LRD ratios      | ✅ Classical           |                                      
-| Grover, QRAM, etc. | Quantum minimum/QRAM/Grover extraction | ❌ Not implemented        |                     
-
 
 ## 🛠️ API
 
