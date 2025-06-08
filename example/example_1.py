@@ -42,10 +42,11 @@ clf = QuantumLOFClassifier(
     delta=2.0,
     quantum_backend='qiskit_simulator',  # AerSimulator を使用
     # quantum_backend='ibm_cairo',       # 実機 ibm_cairo を使用する場合
-    shots=512,
+    shots=10,
     random_state=42,
-    maxsample_for_quantum=100
-)
+    maxsample_for_quantum=200,
+    distance_metric="euclid"
+    )
 
 # ────────────────────────────────────────────────────
 # 3) LOF による異常/クリーン判定 

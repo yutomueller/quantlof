@@ -1,11 +1,14 @@
-# quantum_lof_classifier.py — *fully* Guo 2023‑compliant (Qiskit 2.0.2)
-"""Quantum-enhanced Local Outlier Factor
-=========================================
-Inspired by
+# quantum_lof_classifier.py
+"""
+Quantum-enhanced Local Outlier Factor
+=====================================
+Guo 2023 (arXiv:2304.08710) 参考。
 
-> Ming-Chao Guo *et al.* “Quantum Algorithm for Unsupervised Anomaly
-> Detection”, *arXiv*:2304.08710 (2023).
-                            |
+* Fidelity :  √(1−F),  F=|⟨x|y⟩|²
+    └─ swap      : SWAP-test（2n+1 qubits, 1 回路）
+
+Qiskit 2.0.2 には `SwapTest` 回路は無いため、
+CSWAP ループで手動構築している。
 """
 
 from __future__ import annotations
@@ -21,8 +24,9 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 
+
+
 from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
-from qiskit.circuit.library import StatePreparation
 from qiskit_aer import AerSimulator
 from qiskit_ibm_runtime import QiskitRuntimeService
 
@@ -32,7 +36,7 @@ MAX_QUANTUM_SAMPLES: int = 100
 EPS: float = 1e-12
 
 # ---------------------------------------------------------------------------
-#   Quantum helpers (Sec. III‑A)
+#   Basic helpers
 # ---------------------------------------------------------------------------
 
 def _next_pow_two(n: int) -> int:
@@ -41,92 +45,121 @@ def _next_pow_two(n: int) -> int:
         p <<= 1
     return p
 
-
 def _amp_embed_state(vec: np.ndarray) -> Tuple[List[float], int]:
-    """Return (amplitudes, n_qubits) for a **normalised** vector."""
-    v = vec / (np.linalg.norm(vec) + EPS)
+    """Normalise and zero-pad → return (amplitudes, n_qubits)."""
+    v = vec.astype(float)
+    v = v / (np.linalg.norm(v) + EPS)
     dim = _next_pow_two(len(v))
     if dim != len(v):
         v = np.pad(v, (0, dim - len(v)))
     return v.tolist(), int(math.log2(dim))
 
+def _sin2_embed_state(vec: np.ndarray) -> Tuple[List[float], int]:
+    """sin² encoding: amplitudes = sin(x_i)."""
+    v = np.sin(vec)
+    v = v / (np.linalg.norm(v) + EPS)
+    dim = _next_pow_two(len(v))
+    if dim != len(v):
+        v = np.pad(v, (0, dim - len(v)))
+    return v.tolist(), int(math.log2(dim))
 
-# --- Hadamard‑test inner‑product ------------------------------------------
+# ---------------------------------------------------------------------------
+#   Fidelity helpers
+# ---------------------------------------------------------------------------
 
-def _make_hadamard_test(xi: np.ndarray, xj: np.ndarray) -> Tuple[QuantumCircuit, str]:
-    """Build Hadamard‑test circuit.
+def _make_swap_test(xi: np.ndarray, xj: np.ndarray) -> Tuple[QuantumCircuit, str]:
+    """Construct SWAP-test manually using `initialize()` (AerSimulator safe)."""
+    amps_i, nq = _sin2_embed_state(xi)
+    amps_j, _  = _sin2_embed_state(xj)
 
-    Ancilla |0〉 —H—•—H—meas gives p0 = (1+Re⟨x|y⟩)/2.
-    We prepare U_x on data register, then apply **controlled‑U_y†**.
-    """
-    amps_i, nq = _amp_embed_state(xi)
-    amps_j, _  = _amp_embed_state(xj)
-
-    anc   = QuantumRegister(1, "anc")
-    data  = QuantumRegister(nq, "data")
-    cbit  = ClassicalRegister(1, "c")
-    qc = QuantumCircuit(anc, data, cbit, name="HadTest")
-
-    # Prepare |x_i〉
-    qc.append(StatePreparation(amps_i), data)
+    anc  = QuantumRegister(1, "anc")
+    reg_a = QuantumRegister(nq, "a")
+    reg_b = QuantumRegister(nq, "b")
+    creg = ClassicalRegister(1, "c")
+    qc = QuantumCircuit(anc, reg_a, reg_b, creg, name="SwapTest")
 
     # Hadamard on ancilla
     qc.h(anc[0])
 
-    # Controlled‑U_y†
-    Uy_dg_ctrl = StatePreparation(amps_j).inverse().control(1)
-    qc.append(Uy_dg_ctrl, [anc[0], *data])
+    # Safe initialization instead of StatePreparation
+    qc.initialize(amps_i, reg_a)
+    qc.initialize(amps_j, reg_b)
 
-    # Closing Hadamard & meas
+    # CSWAPs
+    for i in range(nq):
+        qc.cswap(anc[0], reg_a[i], reg_b[i])
+
+    # Final Hadamard and measurement
     qc.h(anc[0])
-    qc.measure(anc[0], cbit[0])
+    qc.measure(anc[0], creg[0])
     return qc, "0"
 
-
-def _estimate_inner_product(
+def _estimate_fidelity_swap(
     backend: Union[AerSimulator, "BackendV2"],
     xi: np.ndarray,
     xj: np.ndarray,
     shots: int,
 ) -> float:
-    """Return **real** inner product Re⟨x_i|x_j⟩ via Hadamard test."""
-    circuit, key0 = _make_hadamard_test(xi, xj)
+    qc, key0 = _make_swap_test(xi, xj)
+    rand_seed = np.random.randint(1, 2**32-1)
     try:
-        p0 = backend.run(circuit, shots=shots).result().get_counts().get(key0, 0) / shots
-        return 2 * p0 - 1  # Re⟨x|y⟩
-    except Exception:
-        return float(np.dot(xi, xj) / (np.linalg.norm(xi) * np.linalg.norm(xj) + EPS))
+        result = backend.run(qc, shots=shots).result()
+        counts = result.get_counts()
+        p0 = counts.get(key0, 0) / shots
+        return 2 * p0 - 1.0  # F = 2p0 − 1
+    except Exception as e:
+        print("SWAP fallback used. ERROR:", e)
+        inner = float(np.dot(xi, xj) / (np.linalg.norm(xi) * np.linalg.norm(xj) + EPS))
+        return inner ** 2
 
+# ---------------------------------------------------------------------------
+#   Distance conversion
+# ---------------------------------------------------------------------------
 
-def _distance_from_inner(inner: float) -> float:
-    inner_clip = max(min(inner, 1.0), -1.0)
-    return math.sqrt(max(2.0 - 2.0 * inner_clip, 0.0))
+def _distance_from_fidelity(F: float) -> float:
+    F_clip = min(max(F, 0.0), 1.0)
+    return math.sqrt(max(1.0 - F_clip, 0.0))
 
 # ---------------------------------------------------------------------------
 #   QuantumLOFClassifier
 # ---------------------------------------------------------------------------
 
 class QuantumLOFClassifier(BaseEstimator, OutlierMixin, ClassifierMixin):
-    """LOF with quantum k‑distance fully matching *Guo 2023*."""
+    """
+    Quantum Local Outlier Factor with selectable distance metric.
+
+    Parameters
+    ----------
+    distance_metric : {'euclid', 'fidelity'}
+        'euclid'   – √(2−2⟨x|y⟩)   (Hadamard 1回)
+        'fidelity' – √(1−F)        (swap)
+    fidelity_method : {'hadamard2', 'swap'}
+    """
 
     def __init__(
         self,
         n_neighbors: int = 20,
         delta: float = 1.5,
+        distance_metric: str = "euclid",
         quantum_backend: str = "qiskit_simulator",
         shots: int = 1024,
         random_state: Optional[int] = None,
         clean_model=None,
         noise_model=None,
-        maxsample_for_quantum: int=MAX_QUANTUM_SAMPLES
+        maxsample_for_quantum: int = MAX_QUANTUM_SAMPLES,
     ) -> None:
         self.n_neighbors = n_neighbors
         self.delta = delta
+        self.distance_metric = distance_metric.lower()
         self.quantum_backend = quantum_backend
         self.shots = shots
         self.random_state = random_state
-        self.clean_model = clean_model or SVC(probability=True, kernel="rbf", C=1.0, random_state=random_state)
-        self.noise_model = noise_model or RandomForestClassifier(n_estimators=100, random_state=random_state)
+        self.clean_model = clean_model or SVC(
+            probability=True, kernel="rbf", C=1.0, random_state=random_state
+        )
+        self.noise_model = noise_model or RandomForestClassifier(
+            n_estimators=100, random_state=random_state
+        )
         self.maxsample_for_quantum = maxsample_for_quantum
 
         # placeholders
@@ -140,141 +173,100 @@ class QuantumLOFClassifier(BaseEstimator, OutlierMixin, ClassifierMixin):
         self.clean_indices_: Optional[np.ndarray] = None
         self._backend = None
 
+    # ---------------------------------------------------------------------
+
     def _build_backend(self):
         if self.quantum_backend.lower() == "qiskit_simulator":
-            self._backend = AerSimulator()
+            self._backend = AerSimulator(method="statevector")
         else:
             try:
                 self._backend = QiskitRuntimeService().backend(self.quantum_backend)
             except Exception:
-                self._backend = AerSimulator()
+                self._backend = AerSimulator(method="statevector")
+
+    # --- similarity wrapper ---------------------------------------------
+
+    def _similarity(self, xi: np.ndarray, xj: np.ndarray) -> float:
+        return _estimate_fidelity_swap(self._backend, xi, xj, self.shots)
+
+    # --- k-distance ------------------------------------------------------
 
     def _quantum_k_distance(self, X: np.ndarray) -> np.ndarray:
         n = len(X)
         kdist = np.zeros(n)
+        # fidelity
+        
         for i in range(n):
-            dist_list = []
+            dlist = []
             for j in range(n):
                 if i == j:
                     continue
-                inner = _estimate_inner_product(self._backend, X[i], X[j], self.shots)
-                dist_list.append(_distance_from_inner(inner))
-            dist_list.sort()
-            kdist[i] = dist_list[self.n_neighbors - 1]
+                sim = self._similarity(X[i], X[j])
+                dlist.append(_distance_from_fidelity(sim))
+            dlist.sort()
+            kdist[i] = dlist[self.n_neighbors - 1]
         return kdist
 
     # ------------------------ public API ------------------------
 
     def detect_anomalies(self, X: np.ndarray, y: np.ndarray):
-        """
-        Compute LOF scores and identify anomaly indices (LOF ≥ δ).
-
-        This method only performs:
-          1. Feature scaling.
-          2. Quantum or classical k-distance computation.
-          3. Neighbor index retrieval.
-          4. LRD (local reachability density) calculation.
-          5. LOF score computation.
-          6. Anomaly (noise) index extraction.
-
-        Args:
-            X: Feature matrix of shape (n_samples, n_features).
-            y: Label array of length n_samples (passed through for downstream use).
-
-        Returns:
-            self
-        """
+        """Compute LOF scores and split indices into anomalies / clean."""
         X, y = np.asarray(X, float), np.asarray(y)
-
-        # Fit a StandardScaler on X and transform to obtain scaled features Xs
         self.scaler_ = StandardScaler().fit(X)
         Xs = self.scaler_.transform(X)
         self.X_train_ = Xs
 
-        # Build the chosen quantum backend (or fallback to classical)
         self._build_backend()
 
-        # If sample count is within quantum limit, use quantum k-distance; otherwise classical
         if len(X) <= self.maxsample_for_quantum:
-            print("Use quantum k-distance (Hadamard test)")
+            print("Use quantum k-distance")
             self.k_distances_ = self._quantum_k_distance(Xs)
         else:
-            print("Use classic k-distance")
+            print("Use classical k-distance")
             nbr_tmp = NearestNeighbors(n_neighbors=self.n_neighbors).fit(Xs)
             self.k_distances_ = nbr_tmp.kneighbors(Xs)[0][:, -1]
 
-        # Retrieve neighbor indices using classical k-NN (k_neighbors + 1, then drop self)
         nbrs = NearestNeighbors(n_neighbors=self.n_neighbors + 1).fit(Xs)
         _, idx = nbrs.kneighbors(Xs)
         self.neighbor_indices_ = [row[1:].tolist() for row in idx]
 
-        # Compute Local Reachability Density (LRD) for each sample
         n = len(Xs)
         self.lrd_scores_ = np.zeros(n)
         for i, neigh in enumerate(self.neighbor_indices_):
-            reach_distances = [
-                max(self.k_distances_[j], np.linalg.norm(Xs[i] - Xs[j]))
-                for j in neigh
-            ]
-            self.lrd_scores_[i] = 1.0 / (np.mean(reach_distances) + EPS)
+            reach = [max(self.k_distances_[j], np.linalg.norm(Xs[i] - Xs[j])) for j in neigh]
+            self.lrd_scores_[i] = 1.0 / (np.mean(reach) + EPS)
 
-        # Compute LOF scores for each sample
         self.lof_scores_ = np.zeros(n)
         for i, neigh in enumerate(self.neighbor_indices_):
-            self.lof_scores_[i] = np.mean([
-                self.lrd_scores_[j] / (self.lrd_scores_[i] + EPS)
-                for j in neigh
-            ])
+            self.lof_scores_[i] = np.mean(
+                [self.lrd_scores_[j] / (self.lrd_scores_[i] + EPS) for j in neigh]
+            )
 
-        # Determine which samples are anomalies (LOF ≥ delta)
         is_noise = self.lof_scores_ >= self.delta
         self.anomaly_indices_, self.clean_indices_ = (
             np.where(is_noise)[0],
-            np.where(~is_noise)[0]
+            np.where(~is_noise)[0],
         )
-
         return self
 
     def fit_models(self, y: np.ndarray):
-        """
-        Fit the downstream classifiers based on detected anomalies.
-
-        This method assumes detect_anomalies() has been called, so that:
-          - self.X_train_ contains scaled features.
-          - self.anomaly_indices_ and self.clean_indices_ are populated.
-
-        Args:
-            y: Label array of length n_samples.
-        """
         if self.X_train_ is None or self.anomaly_indices_ is None:
             raise RuntimeError("Call detect_anomalies() before fit_models().")
-
         Xs = self.X_train_
+        mask = np.zeros(len(Xs), dtype=bool)
+        mask[self.anomaly_indices_] = True
 
-        # Build a boolean mask for noise samples
-        is_noise = np.zeros(len(Xs), dtype=bool)
-        is_noise[self.anomaly_indices_] = True
-
-        # Fit clean_model on samples classified as clean by LOF (LOF < delta)
         if len(self.clean_indices_) > 0:
-            self.clean_model.fit(Xs[~is_noise], y[~is_noise])
-
-        # Fit noise_model on all samples (including anomalies)
+            self.clean_model.fit(Xs[~mask], y[~mask])
         self.noise_model.fit(Xs, y)
         return self
 
     def fit(self, X: np.ndarray, y: np.ndarray):
-        """
-        Convenience method: run detect_anomalies() then fit_models().
-
-        Args:
-            X: Feature matrix of shape (n_samples, n_features).
-            y: Label array of length n_samples.
-        """
         self.detect_anomalies(X, y)
         self.fit_models(y)
         return self
 
+    # ---------------- prediction & scoring ----------------------
 
     def decision_function(self, X: np.ndarray) -> np.ndarray:
         Xs = self.scaler_.transform(X)
@@ -309,9 +301,10 @@ class QuantumLOFClassifier(BaseEstimator, OutlierMixin, ClassifierMixin):
             return 0.0, 0.0, 0
         Xc, yc = self.scaler_.transform(X[mask]), y[mask]
         yp = self.clean_model.predict(Xc)
-        return accuracy_score(yc, yp), f1_score(yc, yp, average='weighted'), int(mask.sum())
+        return accuracy_score(yc, yp), f1_score(yc, yp, average="weighted"), int(mask.sum())
 
-        # --------------------- anomaly accessor ---------------------
+    # --------------------- accessors ----------------------------
+
     def get_anomaly_indices(self) -> np.ndarray:
         if self.anomaly_indices_ is None:
             raise RuntimeError("detect_anomalies() must be called first.")
@@ -321,3 +314,5 @@ class QuantumLOFClassifier(BaseEstimator, OutlierMixin, ClassifierMixin):
         if self.clean_indices_ is None:
             raise RuntimeError("detect_anomalies() must be called first.")
         return self.clean_indices_
+
+

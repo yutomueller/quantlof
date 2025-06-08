@@ -38,7 +38,7 @@ y = np.hstack([y_base, y_outliers])
 # ────────────────────────────────────────────────────
 clf = QuantumLOFClassifier(
     n_neighbors=20,
-    delta=1.5,
+    delta=1.3,
     quantum_backend='qiskit_simulator',  # AerSimulator を使用
     # quantum_backend='ibm_cairo',       # 実機 ibm_cairo を使用する場合
     shots=1024,

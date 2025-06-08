@@ -15,17 +15,17 @@ X_base, y_base = make_classification(
     n_features=20,
     n_informative=10,
     n_redundant=5,
-    n_classes=2,
+    n_classes=3,
     flip_y=0.0,       # ラベルは反転させない
     random_state=42
 )
 
-# （B）特徴量空間の外れ値サンプルを 10 件追加（たとえば平均から大きく離す）
+# （B）特徴量空間の外れ値サンプルを 12 件追加（たとえば平均から大きく離す）
 rng = np.random.RandomState(999)
-outliers = rng.normal(loc=100.0, scale=1.0, size=(10, 20))
+outliers = rng.normal(loc=100.0, scale=1.0, size=(12, 20))
 y_outliers = np.ones(10, dtype=int)  # 値はどちらでも構わない（ここではクラス 1 に設定）
 
-# （C）結合して 100 サンプルとする
+# （C）結合して 102 サンプルとする
 X = np.vstack([X_base, outliers])
 y = np.hstack([y_base, y_outliers])
 
@@ -38,9 +38,9 @@ clf = QuantumLOFClassifier(
     delta=2.0,
     quantum_backend='qiskit_simulator',  # AerSimulator を使用
     # quantum_backend='ibm_cairo',       # 実機 ibm_cairo を使用する場合
-    shots=512,
+    shots=10,
     random_state=42,
-    maxsample_for_quantum=100
+    maxsample_for_quantum=1
 )
 
 # ────────────────────────────────────────────────────

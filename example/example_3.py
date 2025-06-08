@@ -24,7 +24,7 @@ X_base, y_base = make_classification(
     n_classes=3,
     flip_y=0.0,
     class_sep=1.5,  # クラス分離度を高めに
-    random_state=42
+    random_state=40
 )
 
 # (B) クラス1の重心を求める
@@ -50,7 +50,7 @@ clf = QuantumLOFClassifier(
     delta=1.5,
     quantum_backend='qiskit_simulator',  # AerSimulator を使用
     # quantum_backend='ibm_cairo',       # 実機 ibm_cairo を使用する場合
-    shots=1024,
+    shots=10,
     random_state=42,
     maxsample_for_quantum=100
 )

@@ -10,23 +10,22 @@ This repository provides an implementation partially inspired by the algorithm p
 `QuantumLOFClassifier` is a quantum-enhanced Local Outlier Factor (LOF) anomaly detection classifier, using **Hadamard-test quantum circuits** to estimate inner products between vectors, which are then used to calculate pairwise distances for LOF scoring.
 
 * ✅ **Quantum LOF step** using Qiskit 2.0.2 compatible circuits
-* ✅ **Hadamard test** for inner product ⟨x|y⟩ via ancilla-mediated circuit
-* ✅ **LOF score computation** as per the original paper
+* ✅ **LOF score computation**
 * ✅ Dual downstream models for clean and noisy regions
 * ⚠️ Currently lacks Grover-based quantum minimum/average steps
 
 ---
 
-## 🧠 Algorithm Mapping to Paper
+## 🧠 Algorithm Mapping to Paper (Guo 2023 - arXiv:2304.08710)
 
-| Paper Section      | Functionality                 | Implemented? | Notes                                    |                                  |
-| ------------------ | ----------------------------- | ------------ | ---------------------------------------- | -------------------------------- |
-| III-A Eq.(7)   | Amplitude embedding           | ✅    | Uses `StatePreparation`, not QRAM oracle |                                  |
-| III-A Eq.(11)      | Hadamard test ⟨x｜y⟩           | ✅ |                                   Our implementation achieves pairwise distance estimation via Hadamard test and inner product reconstruction (assuming normalized inputs), which differs from the amplitude-encoded quantum distance estimation approach proposed in arXiv:2304.08710. Therefore, while the objective aligns with the original paper, the method is independently designed.
-| III-A Eq.(15–17)   | Distance from inner product   | ⚠️  |    My implementation estimates the real part of ⟨x｜y⟩ via the Hadamard test, and uses it to compute the Euclidean distance as d(x, y) = √(2 − 2⟨x｜y⟩), assuming normalized inputs.                  |
-| III-A Step 1.6–1.7 | Quantum Minimum Search        | ❌          | Replaced with classical sort             |                                  |
-| III-B              | Quantum LRD (inverse average) | ❌          | Classical mean-based implementation      |                                  |
-| Eq.(2), Eq.(28)    | Grover anomaly extraction     | ❌         | Classical threshold test                 |                                  |
+| Paper Section          | Functionality                           | Implemented? | Notes                                                                                                                       |
+|------------------------|-----------------------------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------|
+| III-A Eq.(7)           | Amplitude embedding                    | ✅ Yes      | Implemented via `sin²` encoding: `amplitudes = sin(x_i)`.                                                              |
+| III-A Eq.(11)          | Swap test ⟨x｜y⟩                   | ✅ Yes      | Implemented manually using CSWAP gates and `initialize()`.                                                                 |
+| III-A Eq.(15) - Eq.(17)| Distance from inner product            | ⚠ Partially | Uses `d(x, y) = √(1 - ⟨x｜y⟩)` assuming normalized inputs (not amplitude-based overlap fidelity).                      |
+| III-A Step 1.6–1.7      | Quantum Minimum Search                | ❌ No       | Classical sort is used instead of quantum minimum finding.                                                                  |
+| III-B                  | Quantum LRD (inverse of avg reach dist) | ❌ No       | Classical averaging is used for local reachability density calculation.                                                    |
+| Eq.(2), Eq.(28)        | Grover-based anomaly extraction        | ❌ No       | Anomalies are detected classically using a threshold on LOF score (delta).                                                 |
 
 ---
 
