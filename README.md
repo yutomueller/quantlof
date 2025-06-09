@@ -7,7 +7,7 @@ This repository provides an implementation partially inspired by the algorithm p
 
 ## 📘 Overview
 
-`QuantumLOFClassifier` is a quantum-enhanced Local Outlier Factor (LOF) anomaly detection classifier, using **Hadamard-test quantum circuits** to estimate inner products between vectors, which are then used to calculate pairwise distances for LOF scoring.
+`QuantumLOFClassifier` is a quantum-enhanced Local Outlier Factor (LOF) anomaly detection classifier, using **Swap-test quantum circuits** to estimate inner products between vectors, which are then used to calculate fidelity distances for LOF scoring.
 
 * ✅ **Quantum LOF step** using Qiskit 2.0.2 compatible circuits
 * ✅ **LOF score computation**
@@ -63,7 +63,7 @@ print("Clean indices:", clean_idx)
 
 ## ⚙️ Core Features
 
-* ✅ Hadamard-test for ⟨x|y⟩ inner products
+* ✅ Swap-test for ⟨x|y⟩ inner products
 * ✅ Euclidean distance via Eq. (15–17)
 * ✅ k-distance via quantum estimation
 * ✅ Local Reachability Density (LRD)
@@ -82,7 +82,7 @@ print("Clean indices:", clean_idx)
 | `n_neighbors`           | Number of neighbors for LOF                               |
 | `delta`                 | LOF threshold (LOF ≥ δ → anomaly)                         |
 | `quantum_backend`       | Qiskit backend (e.g. `"qiskit_simulator"`, `"ibm_cairo"`) |
-| `shots`                 | Number of shots in Hadamard test                          |
+| `shots`                 | Number of shots in Swap test                          |
 | `maxsample_for_quantum` | Fallback threshold for classical mode                     |
 | `clean_model`           | Classifier for clean samples (default: SVM)               |
 | `noise_model`           | Classifier for all samples (default: RandomForest)        |
@@ -91,7 +91,7 @@ print("Clean indices:", clean_idx)
 
 ## 🤖 Implementation Notes
 
-* The quantum inner product estimation uses **Hadamard test** with controlled inverse `StatePreparation`.
+* The quantum inner product estimation uses **Swap test**.
 * Classical LOF score is maintained to allow hybrid quantum–classical behavior.
 * The quantum part only replaces pairwise distance calculations.
 
